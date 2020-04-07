@@ -1,0 +1,318 @@
+---
+title: "singstatR::"
+author: Timothy Lee
+Date: 2019-12-05
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{SingstatR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## SingStat Table Builder
+
+The [Singstat Table Builder](https://www.tablebuilder.singstat.gov.sg/publicfacing/mainMenu.action) is a service provided by the Singapore Government's Department of Statistics to allow public access to government data. In their words, "The SingStat Table Builder contains statistical data series from 60 public sector agencies providing a comprehensive statistical view of Singapore’s economic and socio-demographic characteristics. Users may build customised data tables and export these in different file formats."
+
+The Tables provided by SingStat can be accessed in 3 ways:
+
+* On the [user facing website](https://www.tablebuilder.singstat.gov.sg/publicfacing/mainMenu.action) for the general public, where there is a step-by-step wizard to choose the desired data table, request the desired variables, explore, manipulate, visualise, and export the data (CSV, TSV, XLSX, PDF, HTML). However, it is inefficient to get data using the wizard.
+* [Direct API endpoints](https://www.tablebuilder.singstat.gov.sg/publicfacing/initApiList.action) for commonly accessed tables, downloadable in CSV or JSON. The direct links to the tables can be found through a web browser at the link above.
+* A Developer API that allows access to all the data tables available, returned as JSON. Queries are accepted to request desired variables.
+
+Since you're here, you probably already know this - the last of these is the most flexible and efficient for getting the Singapore Government data that you want into R for data manipulation.
+
+### The SingStat Developer API
+
+The SingStat developer API uses 3 API endpoints:
+
+* resourceId - this accepts a search query and search option, returning a JSON with the resource IDs and titles of the tables that match the query + option. 
+* metadata - this accepts a resource ID and returns a JSON with the metadata on that table
+* tabledata - this accepts a resource ID and a series of query parameters, returning a JSON with the table, filtered and sorted based on the data requested in the query parameters.
+
+## Structure of singstatR
+
+singstatR is a R wrapper for the SingStat Table Builder Developer API. It aims to help users access data from the SingStat developer API more easily using R. It contains 3 main functions, all starting with `singstat_`
+
+* `singstat_resource` - A function to access the resourceId endpoint. This is a search, returning table IDs and names of SingStat tables matching the search query.
+* `singstat_metadata` - A function to access the metadata endpoint. This returns a summary of metadata on a table based on its resourceId.
+* `singstat_tabledata` - A function to access the tabledata endpoint. This returns a table from the table builder based on the resourceId and additional queries specified.
+
+There are other functions that build on these basic functions. Explore these in the vignette *More SingstatR*.
+
+One last function, `singstat_endpoint` is not exported. This is only used within the other functions to help construct the request URL. If you want to know what the endpoint URLs are, look up the [Developer API documentation](https://www.tablebuilder.singstat.gov.sg/publicfacing/api/api-intro.html).
+
+## Using SingStatR
+
+Import singstatR.
+```{r setup}
+library(singstatR)
+```
+
+singstatR, at a simple level, is built to follow a linear workflow through the three endpoints. This seems to be the intention of the Developer API structure, and closely mimics the workflow of the web-based wizard.
+
+1. Search for the resourceID of the table that you care about using `singstat_resource()`.
+2. Use `singstat_metadata()` to find out more about the tables of interest.
+3. Use the metadata to construct the query for `singstat_tabledata()` to get precisely the data that you want.
+
+### singstat_resource
+
+The `singstat_resource()` function constructs a query for the resourceID endpoint using the `keyword` and `searchOption` arguments. More details on these arguments:
+
+* `keyword` - The search query - treat it like what you'd type in a google box.
+ + If you'd like to run a search for all tables in the database, enter "%" as your search query. As of writing, there are 802 tables.
+ + Note that you should try to search for single words. Although this wrapper and the API can handle spaces, they tend to deliver empty responses. Use `singstat_search()` to make more advanced queries. This is explained further in the *More SingstatR* vignette.
+* `searchOption` - Where one wants to search for the keyword. Defaults to "all", meaning search for the keyword in both titles and variable names, You can also set it to "variable" and "title" to search for the keywords only in variables and titles respectively.
+
+The function submits a request to the SingStat server based on these arguments, and returns a data frame with the search results. An example is provided below, using the keyword "gdp".
+
+
+```{r}
+gdp_results <- singstat_resource("gdp")
+head(gdp_results)
+```
+
+As can be seen, the `singstat_resource` return object is a dataframe with two columns. The first column is the Resource ID of the SingStat table in the result, while the second column is the title of that table.
+
+The chunk below shows how restricting the search using the searchOption query produces different results. Here, "gdp" is only searched within table titles, not table variables.
+
+```{r}
+gdp_results_title <- singstat_resource("gdp", searchOption = "title")
+head(gdp_results_title)
+
+#Comparing length of results
+nrow(gdp_results)
+nrow(gdp_results_title)
+```
+
+A third argument that can be passed to the `singstat_resource` function is printSummary. This defaults to false. If it is set to true, simple summary information will be printed to the screen. This includes the direct URL of the search query and other basic information that the API provides in the response body. No change to the response object is made.
+
+```{r}
+gdp_results_summary <- singstat_resource("gdp", printSummary = TRUE)
+```
+
+```{r}
+#Is the response object the same as when the printSummary argument defaults to FALSE?
+all.equal(gdp_results_summary, gdp_results)
+```
+
+The table titles may help you decide which tables you actually want to get from the API. Take note of the response IDs of the tables that interest you, and use them in `singstat_metadata` to get more information about the tables to narrow your search before you get the data.
+
+### singstat_metadata
+
+#### The SingStat Metadata API endpoint
+The SingStat Metadata API endpoint returns the metadata for a particular SingStat table. These include information for the whole table, and information about each variable within the table. Here is more information about the information returned.
+
+* Information for the whole table
+  + resourceID -The resourceID of the table.
+  + title - The table title.
+  + frequency - The frequency of measurement
+  + uom - The unit of measure.
+  + datasource - The source of the data.
+  + url - Direct link to the data on the SingStat Table Builder webclient (not the JSON file).
+  + footnote - Footnotes
+  + startPeriod - The first year of data availability
+  + endPeriod - The most recent year of data availability
+  + downloadFormats - The file formats in which one can download the table data from the webclient. Doesn't concern us since we're using this wrapper to get the data directly as an R data.frame.
+  + termsOfUse - A link to the SingStat Table Builder Terms of Use.
+  + apiTermsOfService - A link to the Singapore Government's API Terms of Service.
+  
+* Information on each individual variable
+  +variableCode -The code that identifies a specific variable in the table
+  + variableName - The name of the variable
+  + level - Variables in a table are organised in a hierarchicalised manner. This can also be seen in the variable codes - child variables have a variable code derived from the parent variable code. The levels indicate what level of the hierarchy a variable belongs to, with 1 being the top level variable.
+  + uom - The unit of measure
+  + footnote - Footnotes
+
+#### the singstat_metadata() function
+
+The `singstat_metadata()` function constructs a query for the metadata endpoint using the resourceID of a specific SingStat Table. It returns a data frame with the metadata of the variables within the table. The metadata of the table as a whole are stored as attributes to this data frame (except for downloadFormats).
+
+Summary of the function arguments:
+
+* `resourceID` - The resource ID for the table that to request metadata for.
+* `print_info` - Whether one wants to print out the information about the table as a whole to the console (they will still be stored as attributes, this just provides quick reference to the information).
+
+As an example, we call the argument on a table containing information on Singapore's Balance of Payments, with the Resource ID 16102.
+
+```{r}
+bop_metadata <- singstat_metadata(16102)
+head(bop_metadata)
+```
+As can be seen, the `singstat_metadata()` return object is a dataframe with 5 columns.
+
+* `$variableCode` - The variable code. These are used with `singstat_tabledata()` to get records for these variables.
+* `$variableName` - The variable name.
+* `$level` - The hierarchical level of the variable.
+* `$uom` - Unit of measure.
+* `$footnote` - Footnotes.
+
+Alongside the dataframe are attributes containing information about the table. By default, `print_info()` is `TRUE`, meaning that this information is also printed to the console, as seen above.
+
+The data frame returned by `singstat_metadata()` can sometimes be large, as the SingStat table may have many variables. Thus, `singstat_metadata()` allows one to filter the data frame to return only the variables of a given level and above, or containing certain regex patterns. Use the the `filter_level` and `filter_var` arguments for this.
+
+Summary of function arguments:
+
+* `filter_level` - Filters the dataframe to return only variables of the level specified, or higher.
+* `filter_var` - Filters the dataframe to return only variables matching the regex pattern specified.
+* `ignore_case` - Specifies whether filter_var should be used in a case sensitive or case insensitive manner.
+
+```{r}
+bop_metadata1 <- singstat_metadata(16102, filter_level = 2)
+bop_metadata1
+```
+
+Here, the same table is filtered to contain only variables that are at the second level or higher. In the case of this table, the variables at level 2 or above are the overall components of the Balance of Payments.
+
+Below, we filter this table further using the `filter_var` argument to obtain the metadata only for the variables marked with the letters A, B, C, D, and E. `filter_var` takes  a regex argument passed to `stringr::str_detect()`. The `ignore_case` argument is used within the `stringr::str_detect()` pattern argument to specify whether the regex pattern in `filter_var` should or should not be case sensitive.
+
+```{r}
+bop_metadata2 <- singstat_metadata(16102, filter_level = 2, filter_var = "[ABCDE] ", ignore_case = FALSE)
+bop_metadata2
+```
+
+The metadata obtained using this function provide information needed to make an effective call to the tabledata API (and `singstat_tabledata()`) to obtain the specific data you need from the SingStat table. For instance, theone can specify specific variable codes for the tabledata API to return specifically those variables. Information like units of measure are also important to interpreting the data obtained from the tabledata API. Alongside the metadata obtained from `singstat_metadata`, it will likely be useful to actually see the full table using the webclient before making your `singstat_tabledata` query. The direct link to the web client table can be found in the url attribute returned by `singstat_metadata`, and printed to the console if `print_info` is `TRUE`.
+
+### singstat_tabledata
+
+The `singstat_tabledata()` function constructs a query for the tabledata endpoint using the resourceID of a specific SingStat Table. It returns a data frame with the variables and values of the requested table. LIke `singstat_metadata()` some metadata of the table as a whole are stored as attributes to this data frame.
+
+The two basic arguments, `resourceID` and `print_info` are the same as for `singstat_metadata()`.
+
+As an example, we call the argument on a table containing information on Singapore's Balance of Payments, with the Resource ID 16102.
+
+```{r}
+bop_tabledata <- singstat_tabledata(16102)
+head(bop_tabledata, 10)
+```
+Notice how the function call and output format are very similar to `singstat_metadata()`. When `print_info` = `TRUE`, the dataframe is produced alongside a message containing some metadata about the table.
+
+The returned dataframe may be confusing. Here is an explanation of each column:
+
+* frequency -The interval of measurement. Monthly, quarterly, half-yearly, or annual
+* time - the instance of measurement
+* level - Variables in a table are organised in a hierarchicalised manner. This can also be seen in the variable codes - child variables have a variable code derived from the parent variable code. The levels indicate what level of the hierarchy a variable belongs to, with 1 being the top level variable.
+* variableCode -The code that identifies a specific variable in the table
+* variableName - The name of the variable
+* value - the value of the measurement
+* uom - The unit of measure
+* footnote - Footnotes
+
+The tabledata API accepts additional arguments to refine the results obtained to user specifications. These are described with examples below.
+
+#### variables
+
+The variables argument allows one to specify the variable codes that one wants in a character vector. The API will only return records of the variable code that one has chosen.
+
+```{r}
+unique(bop_tabledata$variableName)
+bop_tabledata_var <- singstat_tabledata(16102, print_info = FALSE,
+                                        variables = c("M060181.1", "M060181.1.1", "M060181.1.2", "M060181.1.3", "M060181.2")
+                                        )
+unique(bop_tabledata_var$variableName)
+```
+Notice here how only records for 5 variables were returned, instead of records for 43 variables.
+
+#### between
+
+The between argument is a numeric vector that specifies the upper and lower limits (inclusive) of values that one wants to obtain.
+
+```{r}
+bop_tabledata_no_bet <- singstat_tabledata(16102, print_info = FALSE,
+                                        variables = c("M060181.1")
+                                        )
+
+bop_tabledata_bet <- singstat_tabledata(16102, print_info = FALSE,
+                                        variables = c("M060181.1"),
+                                        between = c(2000, 3000)
+                                        )
+range(bop_tabledata_no_bet$value)
+range(bop_tabledata_bet$value)
+```
+
+#### sort_by
+
+The sort_by argument is a specially formatted string that specifies column that one wants to sort the records by. Records are sorted by variableCode by default to maintain the hierarchical presentation of the table as per the website. Other choices often do not make sense, but are possible.  One must specify the column to sort (time, level, value value, variableCode, variableName) followed by a space, then asc (for ascending) or desc (for descending).
+
+Compare the arrangement of these two tables:
+```{r}
+head(bop_tabledata, 10)
+
+bop_tabledata_level_sort <- singstat_tabledata(16102, print_info = FALSE, sort_by = "level asc")
+head(bop_tabledata_level_sort, 10)
+```
+
+#### offset
+
+The offset argument shaves off the first n records returned by the table. Again, doing this often do not make sense, but is possible and sometimes convenient if you have sorted the table and want an easy way to exclude certain values. Consider the example below, where the records for the year are shaved off.
+
+```{r}
+bop_tabledata_time <- singstat_tabledata(16102, print_info = FALSE, sort_by = "time asc")
+head(bop_tabledata_time)
+
+bop_tabledata_time_offset <- singstat_tabledata(16102, print_info = FALSE, sort_by = "time asc", offset = 39)
+head(bop_tabledata_time_offset)
+```
+
+#### limit
+
+The limit argument limits the number of records returned by the table.
+
+```{r}
+bop_tabledata_limit <- singstat_tabledata(16102, print_info = FALSE, variables = "M060181.1", limit = 5)
+nrow(bop_tabledata_limit)
+```
+
+#### time_filter
+
+The time_filter argument is a specially formatted string that specifies time time periods that one wants to sort the records by. The format that one should use depends on the frequency of measurement in the table. 
+
+* monthly - c("2018 Mar", "2019 Mar")
+* quarterly - c("2017 4Q", "2018 1Q")
+* half yearly - c("2017 H1", "2018 H2")
+* annual - c("2017", "2018")
+
+For instance:
+
+```{r}
+bop_tabledata_year <- singstat_tabledata(16102, print_info = FALSE, variables = "M060181.1", time_filter = c("2016", "2017"))
+bop_tabledata_year
+```
+
+Here's a quarterly example from a table on quarterly government debt:
+
+```{r}
+head(singstat_tabledata(14506, print_info = FALSE, time_filter = c("2007 1Q", "2008 1Q", "2010 4Q")))
+```
+#### var_search
+
+The var_search argument works as a search, returning records with variable names that contain the string in the query.
+
+```{r}
+bop_tabledata_search <- singstat_tabledata(16102, print_info = FALSE, time_filter = c("2016", "2017"), var_search = "Overall Balance")
+bop_tabledata_year
+```
+
+As can be seen, many of the queries here such as variables and time_filter rely on knowing metadata about the table (e.g. what is the variable code for a given variable, and when was the first year of data collection). Hence, making a call to `singstat_metadata()` will aid in your 
+
+Despite the available arguments to refine the query, in this format, the returned dataframe will unlikely be amenable for data analysis. Use `singstat_tidytable()` to get a table with time as rows and variables as columns which would likely be better for data analysis. However, footnotes will be omitted in this function. See the *More SingstatR* vignette to learn about `singstat_tidytable()`.
+
+## Additional resources
+
+The purpose of singstatR is to make things simple and well documented enough within R such that you don't need to find out how the API actually works. However, if I've failed you, these resources may be useful:
+
+* The *More SingstatR* vignette on other functions in this package.
+* The [Developer API documentation](https://www.tablebuilder.singstat.gov.sg/publicfacing/api/api-intro.html)
+* The [Test Developer API page](https://www.tablebuilder.singstat.gov.sg/publicfacing/api/index.html#/Test_Developer_APIs)
+
+## Authentication and Use
+
+As far as I know, the API does not require an API key. No support for including API keys is included in this package. The website also says nothing about query limits. The government can, however, terminate your use of the API without giving any reasons. As always, use the API and this package responsibly.
+
+SingStat Table Builder is gpverned by the [Singapore Open Data Licence](https://data.gov.sg/open-data-licence). The API and all data drawn from it are governed by the [API Terms of Service](https://data.gov.sg/privacy-and-website-terms#api-terms). Reading both of these links in full is highly recommended.

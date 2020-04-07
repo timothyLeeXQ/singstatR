@@ -1,0 +1,14 @@
+"0","bop_metadata <- singstat_metadata(16102)"
+"2","resourceId: 16102
+title: Singapore's Balance Of Payments, (BPM6 Format), Annual
+frequency: Annual
+uom: Million Dollars
+datasource: SINGAPORE DEPARTMENT OF STATISTICS
+url: https://www.tablebuilder.singstat.gov.sg/publicfacing/createDataTable.action?refId=16102
+footnote: NA
+startPeriod: 1980
+endPeriod: 2018
+termsOfUse: https://www.singstat.gov.sg/terms-of-use
+apiTermsOfService: https://data.gov.sg/privacy-and-website-terms#api-terms
+"
+"0","head(bop_metadata)"

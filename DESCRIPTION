@@ -1,0 +1,31 @@
+Package: singstatR
+Type: Package
+Title: R Package for SingStat Table Builder Developer API
+Version: 0.1.0
+Authors@R: person("Timothy", "Lee", email = "timlxq@gmail.com", role = c("aut", "cre"))
+Author: Timothy Lee [aut, cre]
+Maintainer: Timothy Lee <timlxq@gmail.com>
+Description: R package to access the catalog of tables contained in the SingStat table builder. 
+    From Singapore Department of Statistics: The SingStat table builder contains statistical 
+    data series from 60 public sector agencies providing a comprehensive statistical view of
+    Singapore’s economic and socio-demographic characteristics.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.99.9001
+Suggests: 
+    testthat (>= 2.1.0),
+    knitr,
+    rmarkdown
+Imports: 
+    stringr,
+    httr,
+    jsonlite,
+    dplyr,
+    rlang,
+    magrittr,
+    tidyr,
+    tidyselect,
+    tryCatchLog,
+    data.table
+VignetteBuilder: knitr

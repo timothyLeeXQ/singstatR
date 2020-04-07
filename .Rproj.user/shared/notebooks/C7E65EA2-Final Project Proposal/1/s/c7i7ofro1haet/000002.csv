@@ -1,0 +1,5 @@
+"0","save(gdp_resource_raw, family_resource_raw, annual_resource_raw, metadata_15808_raw, metadata_16102_raw, table_15808_raw, table_16102_raw,"
+"0","     annual_resource, gdp_resource, family_resource,"
+"0","     metadata_15808, metadata_16102,"
+"0","     table_15808, table_16102,"
+"0","     file = ""flight.RData"")"

@@ -1,0 +1,4 @@
+"0","#Singstat resource"
+"0","gdp_resource <- singstat_resource(""gdp"")"
+"0","family_resource <- singstat_resource(""family"")"
+"0","annual_resource <- singstat_resource(""annual"")"

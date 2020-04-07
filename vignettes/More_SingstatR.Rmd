@@ -1,0 +1,109 @@
+---
+title: "More_SingstatR"
+author: Timothy Lee
+Date: 2019-12-13
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{More_SingstatR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## More SingStatR
+
+The functions in this vignette build on the basic functions that wrap around the API endpoints discussed in the vignette *SingstatR*. They offer features that are more powerful or more amenable to common data analysis techniques. However, they may lack a full reporting of information returned by the API for the request. These are rarely needed, but in cases where these are needed (such as individual variable footnotes), use the relevant basic function to obtain the needed information.
+
+```{r setup}
+library(singstatR)
+```
+
+In this vignette, we cover the following functions:
+
+* `singstat_tidytable` - A function that builds on `singstat_tabledata`, delivering a table of data in a tidy format, with each instance of measurement (e.g. the year) as observations (rows) and variables as columns.
+* `singstat_search` - A function that builds on `singstat_resource` to provide a more powerful search than is allowed by that basic function, allowing the combination of multiple search queries.
+* `singstat_craft_table` - A function that builds on `singstat_tabledata` and `singstat_tidytable` to allow for compound tables that draw from more than one table/resourceID. Returns the table in a tidy format.
+
+### singstat_tidytable
+
+`singstat_tabledata()`, by returning individual records as rows, is often not amenable for data analysis. Observations for multiple years and multiple variables are bunched into a single row. This allows for full reporting of details regarding each record, but makes column-wise operations such as calculating a sum or drawing a line graph difficult.
+
+The `singstat_tidytable()` function improves on `singstat_tabledata()` by wrangling the latter's return object to return a dataframe that has each instance of measurement as rows and variables as columns. This format makes column-wise operations much easier.
+
+However, some information, such as which variables are a sub-variable of another, are much harder to derive. Others, notably the footnote for each individual recording instance, are removed entirely in order to present the table neatly. Metadata on the whole table returned by `singstat_tabledata()` are reproduced by `singstat_tidytable()`.
+
+```{r}
+x <- singstat_tabledata(16102, print_info = FALSE)
+y <- singstat_tidytable(16102, print_info = FALSE)
+```
+
+
+```{r}
+head(x)
+head(y)
+```
+Notice how the table returned by the two functions differ. `singstat_tidytable()` combines the variable code, variable name, and unit of measure into the column name (separated by underscores) so that one can interpret the values, and derive the hierarchical structure of the variables using the variable codes. 
+
+The format of the `singstat_tidytable()` output makes it easier to produce visualisations.
+
+```{r}
+plot(y$year, y$`M060181.1.1_A  Current Account Balance_Million Dollars`,
+     type = "l",
+     xlab = "year",
+     ylab = "Current Account Balance (Million Dollars)")
+```
+
+`singstat_tidytable()` can also take arguments that are passed to `singstat_tabledata()` to refine the query. 
+
+```{r}
+head(singstat_tidytable(16102, print_info = FALSE, variables = c("M060181.1.1", "M060181.1.2")))
+```
+
+`singstat_tidytable()` can also turn tables with monthly, quarterly, or half-yearly measurements into an annual table by summing or finding the mean of the measurements for the whole year. This is done by setting the `force_annual` argument to `TRUE`, specifying the `force_op` argument as either "sum" or "mean", and setting na.rm just like you would with the `mean` or `sum` functions.
+
+We can see this from a table about quarterly government debt.
+
+```{r}
+head(singstat_tidytable(14506, print_info = FALSE, force_annual = FALSE))
+head(singstat_tidytable(14506, print_info = FALSE, force_annual = TRUE, force_op = "sum", na.rm = TRUE))
+```
+
+### singstat_search
+
+Often, search queries containing multiple keywords made using the resourceID API endpoint using `singstat_resource()` return no results, despite the presence of tables that contain all the keywords included in the query.
+
+`singstat_search()` gets around this shortcoming by making multiple `singstat_resource()` calls based on a vector of keywords. This allows the user to make searches for tables using multiple words. `singstat_search()` has 3 arguments.
+
+* `keywords` - A character vector with each search query as an element.
+* `search_options` - A character vector of the same length as keywords that provides the corresponding search option for a singstat_resource call using that keyword.
+* `search_type` - A string argument that can be either "and" or "or" (defaults to "or"). If "or", results are returned if they are found for a search for any of the keywords. If "and", only results that match all valid queries (ones that did not throw an error) are returned.
+
+An example of a `singstat_search()` call for "gdp" and "growth" is presented below. A corresponding example of `singstat_resource("gdp growth")` that throws an error is also provided.
+
+```{r}
+singstat_search(keywords = c("gdp", "growth"), search_options = c("all", "all"), search_type = "and")
+```
+
+```{r}
+try(singstat_resource("gdp growth"))
+```
+
+The keywords and search_options argument are vectors with each pair of elements being passed to its own call of `singstat_resource()`. Here, `singstat_resource()` is called for "gdp" with the search option "all", and "growth" with the same search option.
+
+There are two search types. The return object for `singstat_search()` differs between search types.
+
+* "and" - SingStat tables returned by the search showed up in the results for all the individual `singstat_resource()` calls. This means that the SingStat table contains each individual keyword, depending on their corresponding search options. As seen above, the return object is the same as the return object for `singstat_resource()`. It is a two column dataframe with resourceId and title of the tables that meet the search queries as columns.
+* "or" - This is the default argument. SingStat tables returned by the search showed up in the results for at least one `singstat_resource()` call made. by the query. This means that the SingStat table contains at least one keyword provided, based on its corresponding search option. As seen below, the return object is slightly different from the return object for `singstat_resource()`.
+  + The first two columns are the same as the return object for `singstat_resource()`.
+  + The subsequent columns indicate whether a given table/resourceID in a row was returned for each individual `singstat_resource()` call. If the table was present in a `singstat_resource()` call for a keyword (for its corersponding search option), it will have the keyword as a value in the column of the same name. Otherwise, the value will be NA. Here, we can see that resourceID 16112 was in the results for both searches for "gdp" and "growth", while resourceID 16057 was in the results for only "gdp", but not "growth".
+
+```{r}
+singstat_search(keywords = c("gdp", "growth"), search_options = c("all", "all"), search_type = "or")
+```
+

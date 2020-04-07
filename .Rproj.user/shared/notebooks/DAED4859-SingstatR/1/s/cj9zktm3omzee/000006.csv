@@ -1,0 +1,2 @@
+"0","gdp_results_title <- singstat_resource(""gdp"", searchOption = ""title"")"
+"0","head(gdp_results_title)"

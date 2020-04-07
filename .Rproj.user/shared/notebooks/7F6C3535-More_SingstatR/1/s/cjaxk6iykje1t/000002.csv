@@ -1,0 +1,6 @@
+"0","try(singstat_resource(""gdp growth""))"
+"2","Error in singstat_resource(""gdp growth"") : 
+  The response from the server is good, but Singstat table builder has returned an error code. Details:
+Error Code: 400
+Error Message: No resourceID found.
+"

@@ -55,9 +55,9 @@ Completed function, vignette, tests for:
   - singstat\_metadata
   - singstat\_tabledata
   - singstat\_tidytable
+  - add singstat\_search
 
 To complete:
-
-  - add singstat\_search
+ 
   - add singstat\_craft\_table
   - add search-metadata chain function

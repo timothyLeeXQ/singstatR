@@ -1,10 +1,6 @@
-
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
 # singstatR
 
-The package contains my final project for GR 5072 - Modern Data
-Structures.
+## About Singstat Table Builder
 
 The [Singstat Table
 Builder](https://www.tablebuilder.singstat.gov.sg/publicfacing/mainMenu.action)
@@ -15,6 +11,8 @@ public sector agencies providing a comprehensive statistical view of
 Singapore’s economic and socio-demographic characteristics. Users may
 build customised data tables and export these in different file
 formats.”
+
+## About the Package
 
 singstatR is a R wrapper for the SingStat Table Builder Developer API.
 It aims to help users access data from the SingStat developer API more
@@ -46,7 +44,7 @@ objects better suited for data analysis:
 Read the vignette - More\_SingstatR.Rmd for an exploration of these
 functions.
 
-**Progress:**
+## Progress:
 
 Completed function, vignette, tests for:
 
@@ -61,3 +59,9 @@ To complete:
  
   - add singstat\_craft\_table
   - add search-metadata chain function
+
+#### Note on GR 5072 - Modern Data Structures
+
+This package constituted my final project for GR 5072 - Modern Data
+Structures. The main repo for assignments for that course can be 
+found [HERE](https://github.com/timothyLeeXQ/GR-5072-Modern-Data-Structures)

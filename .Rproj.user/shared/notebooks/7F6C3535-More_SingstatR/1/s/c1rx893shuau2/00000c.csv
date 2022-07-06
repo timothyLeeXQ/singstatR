@@ -1,2 +1,0 @@
-"0","x <- singstat_tabledata(16102, print_info = FALSE)"
-"0","y <- singstat_tidytable(16102, print_info = FALSE)"

@@ -1,6 +1,0 @@
-"0","#Is the response object the same as when the printSummary argument defaults to FALSE?"
-"0","all.equal(gdp_results_summary, gdp_results)"
-"1","[1]"
-"1"," TRUE"
-"1","
-"

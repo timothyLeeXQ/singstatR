@@ -35,7 +35,7 @@ singstat_resource <- function(keyword, searchOption = "all", printSummary = FALS
 
     #Query construction
     queries <- list("keyword" = keyword,
-                    "searchOption" = searchOption)
+                    "searchoption" = searchOption)
 
     #HTTP request
     request <- httr::GET(singstat_endpoint("resourceId"),
@@ -79,6 +79,6 @@ singstat_resource <- function(keyword, searchOption = "all", printSummary = FALS
                  response$total))
   }
 
-  response$records
+  response$Data$records
 
 }

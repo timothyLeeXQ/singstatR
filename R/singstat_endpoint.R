@@ -14,8 +14,8 @@
 #'
 singstat_endpoint <- function(API_type) {
   if (stringr::str_detect(API_type, stringr::regex("^resourceId$|^metadata$|^tabledata$", ignore_case = TRUE))) {
-    base <- "https://www.tablebuilder.singstat.gov.sg/publicfacing/rest/timeseries"
-    endpoint <- paste(base, API_type, sep = "/", collapse = "")
+    base <- "https://tablebuilder.singstat.gov.sg/api/table/"
+    endpoint <- paste0(base, API_type)
     endpoint
   } else {
       stop('Endpoint provided is not a valid API endpoint for SingStat Table Builder')

@@ -75,7 +75,7 @@
 
 
 singstat_tabledata <- function(resourceID, print_info = TRUE, variables = NULL, between = NULL,
-                               sort_by = "variableCode asc", offset = NULL, limit = NULL, time_filter = NULL,
+                               sort_by = "key asc", offset = NULL, limit = NULL, time_filter = NULL,
                                var_search = NULL) {
 
   #Define query
@@ -126,7 +126,7 @@ singstat_tabledata <- function(resourceID, print_info = TRUE, variables = NULL, 
   }
 
   #HTTP request
-  url <- paste(singstat_endpoint("tabledata"), resourceID, sep = "/", collapse = "")
+  url <- paste0(singstat_endpoint("tabledata"), "/", resourceID)
   request <- httr::GET(url = url, query = queries)
 
 
@@ -149,30 +149,15 @@ singstat_tabledata <- function(resourceID, print_info = TRUE, variables = NULL, 
   }
 
   #Error check for empty response
-  if (length(response$records) == 0) {
+  if (length(response$Data$row) == 0) {
     stop("The query returned no results")
   }
 
   #Create return object
-  df <- dplyr::inner_join(response$records, response$variables, by = "variableCode") %>%
-    dplyr::select(.data$frequency,
-                  .data$time,
-                  level = .data$level.y,
-                  .data$variableCode,
-                  variableName = .data$variableName.y,
-                  .data$value,
-                  .data$uom,
-                  .data$footnote
-                  )
-
-  #Level should be an integer
-  df$level <- as.integer(df$level)
-
+  df <- response$Data$row
   #Set attributes
-  attr(df, "url") <- response$url
-  attr(df, "uom") <- response$uom
-  attr(df, "total") <- response$total
-  attr(df, "footnotes") <- response$footnote
+  attr(df, "url") <- request$url
+  attr(df, "footnotes") <- response$Data$footnote
 
 
   #print_info
